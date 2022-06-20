@@ -1,8 +1,10 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26228.4
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31112.23
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KnobControl", "KnobControl.csproj", "{04123F59-331D-4582-BE0D-721FEAB6050F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KnobControlTest", "KnobControlTest\KnobControlTest.csproj", "{0334F3A2-C762-443D-910F-29D97A4506FE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,8 +16,15 @@ Global
 		{04123F59-331D-4582-BE0D-721FEAB6050F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{04123F59-331D-4582-BE0D-721FEAB6050F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{04123F59-331D-4582-BE0D-721FEAB6050F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0334F3A2-C762-443D-910F-29D97A4506FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0334F3A2-C762-443D-910F-29D97A4506FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0334F3A2-C762-443D-910F-29D97A4506FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0334F3A2-C762-443D-910F-29D97A4506FE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {710B25F8-B26C-436A-A9AF-81C5DABBCEC4}
 	EndGlobalSection
 EndGlobal

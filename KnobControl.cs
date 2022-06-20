@@ -94,6 +94,7 @@ namespace KnobControl
             line,
         }
 
+        private int _step = 1;
 
         #region private properties
 
@@ -101,8 +102,6 @@ namespace KnobControl
 
         private int _minimum = 0;
         private int _maximum = 25;
-        private int _LargeChange = 5;
-        private int _SmallChange = 1;
 
         private int _scaleDivisions;
         private int _scaleSubDivisions;
@@ -132,6 +131,9 @@ namespace KnobControl
         private Color _scaleColor = Color.Black;
 
         private int _Value = 0;
+        private int _previousValue = 0;
+        private float _degrees = 0;
+
         private bool isFocused = false;
         private bool isKnobRotating = false;
         private Rectangle rKnob;
@@ -148,7 +150,8 @@ namespace KnobControl
         //-------------------------------------------------------
         private Image OffScreenImage;
         private Graphics gOffScreen;
-
+        
+        private int _mouseY = -1;
         #endregion
 
 
@@ -471,38 +474,6 @@ namespace KnobControl
         }
 
         /// <summary>
-        /// value set for large change
-        /// </summary>
-        [Description("set the value for the large changes")]
-        [Category("KnobControl")]
-        public int LargeChange
-        {
-            get { return _LargeChange; }
-            set
-            {
-                _LargeChange = value;
-                // Redraw
-                Invalidate();
-            }
-        }
-        
-        /// <summary>
-        /// value set for small change.
-        /// </summary>
-        [Description("set the minimum value for the small changes")]
-        [Category("KnobControl")]
-        public int SmallChange
-        {
-            get { return _SmallChange; }
-            set
-            {
-                _SmallChange = value;
-                // Redraw
-                Invalidate();
-            }
-        }
-
-        /// <summary>
         /// Current Value of knob control
         /// </summary>
         [Description("set the current value of the knob control")]
@@ -514,6 +485,7 @@ namespace KnobControl
             {
                 if (value >= _minimum && value <= _maximum)
                 {
+                    _previousValue = _Value;
                     _Value = value;
                     // Redraw
                     Invalidate();
@@ -540,6 +512,15 @@ namespace KnobControl
                 // Redraw
                 Invalidate();
             }
+        }
+
+        public int Step { 
+            get => _step; 
+            set { 
+                if(_step > 0)
+                    _step = value; 
+            } 
+        
         }
 
         #endregion properties
@@ -651,14 +632,25 @@ namespace KnobControl
                     // Was not selected before => select it
                     Focus();
                     isFocused = true;
-                    isKnobRotating = false; // disallow rotation, must click again
+                    isKnobRotating = true;
                     // draw dotted border to show that it is selected
                     Invalidate();
+                }
+
+                if(e.Button == MouseButtons.Left)
+                {                    
+                    _mouseY = e.Y; //store mouse Y coordinate
                 }
             }
 
         }
 
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            isFocused = true;
+            isKnobRotating = true; 
+        }
 
         //----------------------------------------------------------
         // we need to override IsInputKey method to allow user to   
@@ -680,44 +672,29 @@ namespace KnobControl
         }
 
         /// <summary>
-        /// Mouse up event: display new value
+        /// Mouse up event: reset mouse Y coordinate
         /// </summary>
         /// <param name="e"></param>
 		protected override void OnMouseUp(MouseEventArgs e)
-        {
-            if (Utility.IsPointinRectangle(new Point(e.X, e.Y), rKnob))
-            {
-                if (isFocused == true && isKnobRotating == true)
-                {
-                    // Change value is allowed only only after 2nd click                   
-                    this.Value = this.GetValueFromPosition(new Point(e.X, e.Y));
-                }
-                else
-                {
-                    // 1st click = only focus
-                    isFocused = true;
-                    isKnobRotating = true;
-                }
-
-            }
-            this.Cursor = Cursors.Default;
+        {            
+            _mouseY = -1; 
         }
 
         /// <summary>
-        /// Mouse move event: drag the pointer to the mouse position
+        /// Mouse move event: change value according to mouse Y direction (if moved while left-clicked)
         /// </summary>
         /// <param name="e"></param>
 		protected override void OnMouseMove(MouseEventArgs e)
-        {
+        {            
             //--------------------------------------
             //  Following Handles Knob Rotating     
             //--------------------------------------
-            if (e.Button == MouseButtons.Left && this.isKnobRotating == true)
+            if (e.Button == MouseButtons.Left && this.isKnobRotating == true && _mouseY != -1)
             {
-                this.Cursor = Cursors.Hand;
-                Point p = new Point(e.X, e.Y);
-                int posVal = this.GetValueFromPosition(p);
-                Value = posVal;
+                bool goingUp = ((e.Y - _mouseY) < 0) ? true : false; //direction of mouse Y movement                
+
+                int v = (goingUp) ? _step : -1 * (_step);
+                SetProperValue(Value + v);
             }
 
         }
@@ -732,8 +709,7 @@ namespace KnobControl
 
             if (isFocused && isKnobRotating && Utility.IsPointinRectangle(new Point(e.X, e.Y), rKnob))
             {
-                // the Delta value is always 120, as explained in MSDN
-                int v = (e.Delta / 120) * (_maximum - _minimum) / _mouseWheelBarPartitions;
+                int v = (e.Delta > 0) ? _step : -1 * (_step);
                 SetProperValue(Value + v);
 
                 // Avoid to send MouseWheel event to the parent container
@@ -880,7 +856,7 @@ namespace KnobControl
                     h = w;
 
                     Point Arrow = this.GetKnobPosition(l - 2); // Remove 2 pixels to offset the small circle inside the knob
-
+                    
                     // Draw pointer arrow that shows knob position             
                     Rectangle rPointer = new Rectangle(Arrow.X - w / 2, Arrow.Y - w / 2, w, h);
 
@@ -958,12 +934,7 @@ namespace KnobControl
                     fSize = _scaleFont.Size;
                 }
 
-                font = new Font(_scaleFont.FontFamily, fSize);
-                strsize = Gr.MeasureString(str, font);
-
-                int strw = (int)strsize.Width;
-                int strh = (int)strsize.Height;
-                int wmax = Math.Max(strw, strh);
+                int wmax = 0;
 
                 float l = 0;
                 gradLength = 2 * drawRatio;
@@ -1011,11 +982,6 @@ namespace KnobControl
                         ty = (float)(cy + l * Math.Sin(currentAngle));
                     }
 
-                    Gr.DrawString(str,
-                                    font,
-                                    br,
-                                    tx - (float)(strsize.Width * 0.5),
-                                    ty - (float)(strsize.Height * 0.5));
 
 
 
@@ -1052,8 +1018,7 @@ namespace KnobControl
                         }
                     }
                     #endregion                    
-                }
-                font.Dispose();
+                }               
             }
 
             return true;
@@ -1133,8 +1098,8 @@ namespace KnobControl
                     w = 1;
                 h = w;
 
-                // Rectangle of the rounded knob
-                this.rKnob = new Rectangle((int)x, (int)y, (int)w, (int)h);
+                // Rectangle of the rounded knob                
+                this.rKnob = new Rectangle(0, 0, Width - 2, Height - 2);
 
                 Gr.Dispose();
             }
@@ -1194,9 +1159,12 @@ namespace KnobControl
         /// <param name="val">The value.</param>
         private void SetProperValue(int val)
         {
-            if (val < _minimum) Value = _minimum;
-            else if (val > _maximum) Value = _maximum;
-            else Value = val;
+            if (val < _minimum) 
+                Value = _minimum;
+            else if (val > _maximum) 
+                Value = _maximum;
+            else 
+                Value = val;
         }
 
         /// <summary>
@@ -1208,15 +1176,14 @@ namespace KnobControl
             float cx = pKnob.X;
             float cy = pKnob.Y;
 
-            // FAB: 21/08/18            
-            float degree = deltaAngle * (this.Value - _minimum) / (_maximum - _minimum);
+            float deltaDegree = (_previousValue < _Value) ? 1 : -1;
 
-            degree = Utility.GetRadian(degree + _startAngle);
+            _degrees = _degrees + deltaDegree;
 
             Point Pos = new Point(0, 0)
             {
-                X = (int)(cx + l * Math.Cos(degree)),
-                Y = (int)(cy + l * Math.Sin(degree))
+                X = (int)(cx + l * Math.Cos(_degrees)),
+                Y = (int)(cy + l * Math.Sin(_degrees))
             };
 
             return Pos;
@@ -1237,12 +1204,12 @@ namespace KnobControl
 
             float radius = (float)(rKnob.Width / 2);
 
-            // FAB: 21/08/18            
-            float degree = deltaAngle * (this.Value - _minimum) / (_maximum - _minimum);
+            float deltaDegree = 0;
+            if(_previousValue != _Value)
+                deltaDegree = (_previousValue < _Value) ? 0.1f : -0.1f;
 
-            degree = Utility.GetRadian(degree + _startAngle);
-
-
+            _degrees = _degrees + deltaDegree;
+            
             double val = _maximum;
             String str = String.Format("{0,0:D}", (int)val);
             float fSize;
@@ -1273,27 +1240,27 @@ namespace KnobControl
             if (_drawDivInside)
             {
                 // Center (from)
-                Pos.X = (int)(cx + (radius / 10) * Math.Cos(degree));
-                Pos.Y = (int)(cy + (radius / 10) * Math.Sin(degree));
+                Pos.X = (int)(cx + (radius / 10) * Math.Cos(_degrees));
+                Pos.Y = (int)(cy + (radius / 10) * Math.Sin(_degrees));
                 pret[0] = new Point(Pos.X, Pos.Y);
 
                 // External (to)
-                Pos.X = (int)(cx + (radius - w) * Math.Cos(degree));
-                Pos.Y = (int)(cy + (radius - w) * Math.Sin(degree));
+                Pos.X = (int)(cx + (radius - w) * Math.Cos(_degrees));
+                Pos.Y = (int)(cy + (radius - w) * Math.Sin(_degrees));
                 pret[1] = new Point(Pos.X, Pos.Y);
             }
             else
             {
                 // Internal (from)
-                Pos.X = (int)(cx + (radius - drawRatio * 10 - l) * Math.Cos(degree));
-                Pos.Y = (int)(cy + (radius - drawRatio * 10 - l) * Math.Sin(degree));
+                Pos.X = (int)(cx + (radius - drawRatio - l) * Math.Cos(_degrees));
+                Pos.Y = (int)(cy + (radius - drawRatio - l) * Math.Sin(_degrees));
 
 
                 pret[0] = new Point(Pos.X, Pos.Y);
 
                 // External (to)
-                Pos.X = (int)(cx + (radius - 4) * Math.Cos(degree));
-                Pos.Y = (int)(cy + (radius - 4) * Math.Sin(degree));
+                Pos.X = (int)(cx + (radius - 4) * Math.Cos(_degrees));
+                Pos.Y = (int)(cy + (radius - 4) * Math.Sin(_degrees));
 
                 pret[1] = new Point(Pos.X, Pos.Y);
             }
