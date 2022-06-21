@@ -11,5 +11,6 @@ of a certain amount, and move it with cursor keys, mouse wheel or dragging the m
 
 There's also a sample application that shows how it looks and works.
 
-Obviouly, as it's a multi turn knob, there will be no numeric values written around the knob.
+Obviouly, as it's a multi turn knob, there will be no numeric values written around the knob,
+but we rely on ValueChanged event, emitted from the control every time the value changes, to read and display the current value.
 
